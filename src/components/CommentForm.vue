@@ -13,8 +13,8 @@
       :rules="commentBodyRules"
     />
     <VTextField v-model="commentEmail" density="compact" label="Email" :rules="emailRules" />
-    <VBtn size="small" type="submit" class="comment-form__send-button"> Send comment </VBtn>
-    <VBtn size="small" class="comment-form__cancel-button" @click="cancelAddComment"> Cancel </VBtn>
+    <VBtn size="small" type="submit" class="comment-form__send-button">Send comment</VBtn>
+    <VBtn size="small" class="comment-form__cancel-button" @click="cancelAddComment">Cancel</VBtn>
     <VProgressLinear v-if="isSending" indeterminate />
   </VForm>
 </template>
@@ -81,7 +81,6 @@ async function sendComment() {
   if (newComment.id) {
     clearCommentData()
     emit('success')
-    emit('hide')
   } else {
     emit('fail')
   }

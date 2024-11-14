@@ -7,7 +7,7 @@
     density="compact"
     hide-details
     label="Username"
-    @update:model-value="handeSelect"
+    @update:model-value="emit('select')"
   />
 </template>
 
@@ -17,9 +17,10 @@ import { storeToRefs } from 'pinia'
 import { VSelect } from 'vuetify/lib/components/index.mjs'
 import { usePostsStore } from '@/stores/posts'
 
+const emit = defineEmits(['select'])
+
 const postsStore = usePostsStore()
 const { selectedUserId, users } = storeToRefs(postsStore)
-const { updatePosts } = postsStore
 
 const items = computed(() => {
   const options = users.value.map((user) => {
@@ -32,12 +33,4 @@ const items = computed(() => {
   options.sort((a, b) => (a.title > b.title ? 1 : -1))
   return options
 })
-
-async function handeSelect() {
-  if (selectedUserId.value) {
-    await updatePosts({ userId: selectedUserId.value })
-  } else {
-    await updatePosts()
-  }
-}
 </script>

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Post, User } from './types'
+import type { Comment, Post, User } from './types'
 import type { PostApi, PostSearchParamsApi, CommentCreateDataApi } from '@/api/types'
 import {
   getCommentsApi,
@@ -15,9 +15,12 @@ export const usePostsStore = defineStore('posts', () => {
   const posts = ref<Post[]>([])
   const users = ref<User[]>([])
   const selectedUserId = ref<number | undefined>()
+  const selectedPost = ref<Post | null>(null)
+  const selectedPostComments = ref<Comment[]>([])
+
   const isLoading = ref(false)
 
-  async function updatePosts(params?: PostSearchParamsApi) {
+  async function updatePosts(params?: PostSearchParamsApi): Promise<boolean> {
     try {
       isLoading.value = true
       const postsApi = await getPostsApi(params)
@@ -34,8 +37,11 @@ export const usePostsStore = defineStore('posts', () => {
           posts.value.push(post)
         }
       })
+
+      return true
     } catch {
-      return
+      posts.value = []
+      return false
     } finally {
       isLoading.value = false
     }
@@ -43,6 +49,16 @@ export const usePostsStore = defineStore('posts', () => {
 
   async function updateUsers() {
     users.value = await getUsersApi()
+  }
+
+  async function updateSelectedPostComments() {
+    if (!selectedPost.value) {
+      selectedPostComments.value = []
+      return
+    }
+
+    const postId = selectedPost.value.id
+    selectedPostComments.value = await getComments(postId)
   }
 
   async function getComments(postId: number) {
@@ -56,15 +72,9 @@ export const usePostsStore = defineStore('posts', () => {
   }
 
   async function getPost(id: number): Promise<Post> {
-    let post = posts.value.find((post) => post.id === id)
-
-    if (post) {
-      return post
-    }
-
     const postFromApi = await getPostApi(id)
     const postUser = await getUser(postFromApi.userId)
-    post = postMapper(postFromApi, postUser)
+    const post = postMapper(postFromApi, postUser)
     return post
   }
 
@@ -94,12 +104,15 @@ export const usePostsStore = defineStore('posts', () => {
   return {
     isLoading,
     posts,
+    selectedPost,
+    selectedPostComments,
     selectedUserId,
     users,
     addComment,
     getComments,
     getPost,
     updatePosts,
+    updateSelectedPostComments,
     updateUsers,
   }
 })
