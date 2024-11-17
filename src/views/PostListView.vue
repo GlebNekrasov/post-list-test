@@ -3,49 +3,47 @@
     <div class="post-list-view__header">
       <div class="post-list-view__title">Posts list</div>
       <UserSelect @select="handeSelect" />
+      <VProgressLinear v-if="isLoading" color="success" indeterminate />
     </div>
     <div class="post-list-view__body">
-      <VProgressLinear v-if="isLoading" indeterminate />
+      <VOverlay :model-value="isLoading" contained persistent :z-index="99" />
       <PostList />
     </div>
-    <VSnackbar
-      :model-value="isPostsUpdateFailed"
-      color="error"
-      location="top"
-      text="Could not get posts from server."
-      :timeout="3000"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePostsStore } from '@/stores/posts'
-import { VSnackbar } from 'vuetify/lib/components/index.mjs'
+import { VOverlay, VProgressLinear } from 'vuetify/lib/components/index.mjs'
 import PostList from '@/components/PostList.vue'
 import UserSelect from '@/components/UserSelect.vue'
+import { useLoadingState } from '@/utils/useLoadingState'
+import { showNotification } from '@/utils/showNotification'
 
 const postsStore = usePostsStore()
 const { updatePosts } = postsStore
 const { isLoading, posts, selectedUserId } = storeToRefs(postsStore)
 
-const isPostsUpdateFailed = ref(false)
-
 async function updatePostList(userId?: number) {
-  isPostsUpdateFailed.value = false
-  isPostsUpdateFailed.value = userId
-    ? !(await updatePosts({ userId: userId }))
-    : !(await updatePosts())
+  const isPostsUpdated = userId ? await updatePosts({ userId: userId }) : await updatePosts()
+  if (!isPostsUpdated) {
+    showNotification('Could not get posts from the server', 'error')
+  }
 }
 
 function handeSelect() {
-  updatePostList(selectedUserId.value)
+  useLoadingState(isLoading, async () => {
+    await updatePostList(selectedUserId.value)
+  })
 }
 
 onMounted(() => {
   if (!posts.value.length && !selectedUserId.value) {
-    updatePostList()
+    useLoadingState(isLoading, async () => {
+      await updatePostList()
+    })
   }
 })
 </script>
@@ -56,14 +54,14 @@ onMounted(() => {
 
   &__body {
     padding: 16px;
-    margin: 24px;
-    background-color: #ffffff;
+    position: relative;
+    min-height: 200px;
   }
 
   &__header {
     position: sticky;
     top: 0px;
-    padding: 24px;
+    padding: 16px;
     background-color: #ffffff;
     border-bottom: solid 2px #f0f2f5;
     z-index: 100;

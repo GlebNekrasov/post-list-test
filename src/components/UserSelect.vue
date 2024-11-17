@@ -5,6 +5,7 @@
     :items="items"
     clearable
     density="compact"
+    :disabled="isLoading"
     hide-details
     label="Username"
     @update:model-value="emit('select')"
@@ -20,7 +21,7 @@ import { usePostsStore } from '@/stores/posts'
 const emit = defineEmits(['select'])
 
 const postsStore = usePostsStore()
-const { selectedUserId, users } = storeToRefs(postsStore)
+const { isLoading, selectedUserId, users } = storeToRefs(postsStore)
 
 const items = computed(() => {
   const options = users.value.map((user) => {

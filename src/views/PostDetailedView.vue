@@ -2,15 +2,16 @@
   <div class="post-detailed-view">
     <div class="post-detailed-view__header">
       <nav>
-        <router-link to="/">Back to posts list</router-link>
+        <HeaderLink link="/" title="Back to posts list" />
         <span> | </span>
-        <router-link :to="`/post/${postId - 1}`">Previous post</router-link>
+        <HeaderLink :link="`/post/${postId - 1}`" title="Previous post" />
         <span> | </span>
-        <router-link :to="`/post/${postId + 1}`">Next post</router-link>
+        <HeaderLink :link="`/post/${postId + 1}`" title="Next post" />
       </nav>
+      <VProgressLinear v-if="isLoading" color="success" indeterminate />
     </div>
-    <VProgressLinear v-if="isLoading" indeterminate />
     <div class="post-detailed-view__body">
+      <VOverlay :model-value="isLoading" contained persistent :z-index="99" />
       <div v-if="selectedPost">
         <PostDetailed />
         <div class="post-detailed-view__comments-header">
@@ -29,28 +30,12 @@
         <CommentForm
           v-if="isCommentFormVisible"
           :post-id="postId"
-          @fail="handleCommentFormFail"
-          @success="handleCommentFormSuccess"
           @hide="changeCommentFormVisibility(false)"
+          @success="handleCommentFormSuccess()"
         />
         <CommentList />
       </div>
-      <div v-else>Post not found</div>
     </div>
-    <VSnackbar
-      :model-value="isSendCommentSuccess"
-      color="success"
-      location="top"
-      text="Your comment was added."
-      :timeout="3000"
-    />
-    <VSnackbar
-      :model-value="isSendCommentFailed"
-      color="error"
-      location="top"
-      text="Your comment was not added. Try later."
-      :timeout="3000"
-    />
   </div>
 </template>
 
@@ -59,11 +44,13 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { usePostsStore } from '@/stores/posts'
-import { VBtn, VProgressLinear, VSnackbar } from 'vuetify/lib/components/index.mjs'
-import PostDetailed from '@/components/PostDetailed.vue'
+import { VBtn, VOverlay, VProgressLinear } from 'vuetify/lib/components/index.mjs'
 import CommentForm from '@/components/CommentForm.vue'
 import CommentList from '@/components/CommentList.vue'
+import HeaderLink from '@/components/HeaderLink.vue'
+import PostDetailed from '@/components/PostDetailed.vue'
 import { useLoadingState } from '@/utils/useLoadingState'
+import { showNotification } from '@/utils/showNotification'
 
 const route = useRoute()
 const postsStore = usePostsStore()
@@ -72,17 +59,10 @@ const { getPost, updateSelectedPostComments } = postsStore
 
 const postId = ref(getIdFromRoute())
 const isCommentFormVisible = ref(false)
-const isSendCommentFailed = ref(false)
-const isSendCommentSuccess = ref(false)
 
 function getIdFromRoute() {
   const paramId = route.params.id
-
-  if (Array.isArray(paramId)) {
-    return parseInt(paramId[0])
-  } else {
-    return parseInt(paramId)
-  }
+  return Array.isArray(paramId) ? parseInt(paramId[0]) : parseInt(paramId)
 }
 
 function changeCommentFormVisibility(state: boolean) {
@@ -90,29 +70,44 @@ function changeCommentFormVisibility(state: boolean) {
 }
 
 function handleAddComment() {
-  isSendCommentFailed.value = false
-  isSendCommentSuccess.value = false
   changeCommentFormVisibility(true)
 }
 
-function handleCommentFormFail() {
-  isSendCommentFailed.value = true
-}
-
 async function handleCommentFormSuccess() {
-  isSendCommentSuccess.value = true
   changeCommentFormVisibility(false)
   useLoadingState(isLoading, async () => {
-    await updateSelectedPostComments()
+    await updateComments()
   })
 }
 
 function updateData() {
   postId.value = getIdFromRoute()
   useLoadingState(isLoading, async () => {
-    selectedPost.value = await getPost(postId.value)
-    await updateSelectedPostComments()
+    await updatePost()
+    await updateComments()
   })
+}
+
+async function updateComments() {
+  if (!selectedPost.value) {
+    selectedPostComments.value = []
+    return
+  }
+
+  const isCommentsUpdated = await updateSelectedPostComments()
+
+  if (!isCommentsUpdated) {
+    selectedPostComments.value = []
+    showNotification('Could not get comments from the server', 'error')
+  }
+}
+
+async function updatePost() {
+  selectedPost.value = await getPost(postId.value)
+
+  if (!selectedPost.value) {
+    showNotification('Could not get the post from the server', 'error')
+  }
 }
 
 onMounted(() => {
@@ -133,9 +128,11 @@ onMounted(() => {
   }
 
   &__body {
+    position: relative;
     background-color: #ffffff;
     padding: 16px;
-    margin: 24px;
+    margin: 16px;
+    min-height: 200px;
   }
 
   &__comments-header {
@@ -152,17 +149,10 @@ onMounted(() => {
   &__header {
     position: sticky;
     top: 0px;
-    padding: 24px;
+    padding: 16px;
     background-color: #ffffff;
     border-bottom: solid 2px #f0f2f5;
     z-index: 100;
-
-    nav {
-      a {
-        font-weight: bold;
-        color: #42b983;
-      }
-    }
   }
 }
 </style>

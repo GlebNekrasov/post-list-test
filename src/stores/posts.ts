@@ -22,7 +22,6 @@ export const usePostsStore = defineStore('posts', () => {
 
   async function updatePosts(params?: PostSearchParamsApi): Promise<boolean> {
     try {
-      isLoading.value = true
       const postsApi = await getPostsApi(params)
       if (!users.value.length) {
         await updateUsers()
@@ -42,8 +41,6 @@ export const usePostsStore = defineStore('posts', () => {
     } catch {
       posts.value = []
       return false
-    } finally {
-      isLoading.value = false
     }
   }
 
@@ -51,14 +48,20 @@ export const usePostsStore = defineStore('posts', () => {
     users.value = await getUsersApi()
   }
 
-  async function updateSelectedPostComments() {
+  async function updateSelectedPostComments(): Promise<boolean> {
     if (!selectedPost.value) {
       selectedPostComments.value = []
-      return
+      return false
     }
 
     const postId = selectedPost.value.id
-    selectedPostComments.value = await getComments(postId)
+
+    try {
+      selectedPostComments.value = await getComments(postId)
+      return true
+    } catch {
+      return false
+    }
   }
 
   async function getComments(postId: number) {
@@ -66,16 +69,24 @@ export const usePostsStore = defineStore('posts', () => {
     return commentsFromApi
   }
 
-  async function addComment(data: CommentCreateDataApi) {
-    const newComment = await postCommentApi(data)
-    return newComment
+  async function addComment(data: CommentCreateDataApi): Promise<Comment | null> {
+    try {
+      const newComment = await postCommentApi(data)
+      return newComment
+    } catch {
+      return null
+    }
   }
 
-  async function getPost(id: number): Promise<Post> {
-    const postFromApi = await getPostApi(id)
-    const postUser = await getUser(postFromApi.userId)
-    const post = postMapper(postFromApi, postUser)
-    return post
+  async function getPost(id: number): Promise<Post | null> {
+    try {
+      const postFromApi = await getPostApi(id)
+      const postUser = await getUser(postFromApi.userId)
+      const post = postMapper(postFromApi, postUser)
+      return post
+    } catch {
+      return null
+    }
   }
 
   function getUserData(id: number): User | undefined {

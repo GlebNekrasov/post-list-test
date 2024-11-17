@@ -15,30 +15,24 @@
     <VTextField v-model="commentEmail" density="compact" label="Email" :rules="emailRules" />
     <VBtn size="small" type="submit" class="comment-form__send-button">Send comment</VBtn>
     <VBtn size="small" class="comment-form__cancel-button" @click="cancelAddComment">Cancel</VBtn>
-    <VProgressLinear v-if="isSending" indeterminate />
   </VForm>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { usePostsStore } from '@/stores/posts'
-import {
-  VBtn,
-  VForm,
-  VProgressLinear,
-  VTextarea,
-  VTextField,
-} from 'vuetify/lib/components/index.mjs'
+import { VBtn, VForm, VTextarea, VTextField } from 'vuetify/lib/components/index.mjs'
+import { showNotification } from '@/utils/showNotification'
 
 const props = defineProps<{ postId: number }>()
-const emit = defineEmits(['hide', 'fail', 'success'])
+const emit = defineEmits(['hide', 'success'])
 
 const postsStore = usePostsStore()
+const { isLoading } = storeToRefs(postsStore)
 const { addComment } = postsStore
 
 const commentForm = ref<InstanceType<typeof VForm> | null>()
-
-const isSending = ref(false)
 
 const commentBody = ref('')
 const commentName = ref('')
@@ -56,16 +50,16 @@ function clearCommentData() {
 }
 
 async function sendComment() {
-  isSending.value = true
+  isLoading.value = true
 
   if (commentForm.value) {
     const isFormValid = await commentForm.value.validate()
     if (!isFormValid.valid) {
-      isSending.value = false
+      isLoading.value = false
       return
     }
   } else {
-    isSending.value = false
+    isLoading.value = false
     return
   }
 
@@ -76,13 +70,14 @@ async function sendComment() {
     postId: props.postId,
   })
 
-  isSending.value = false
+  isLoading.value = false
 
-  if (newComment.id) {
+  if (newComment?.id) {
     clearCommentData()
+    showNotification('Your comment was added', 'success')
     emit('success')
   } else {
-    emit('fail')
+    showNotification('Your comment was not added. Try later.', 'error')
   }
 }
 

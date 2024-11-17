@@ -25,6 +25,7 @@ function handleClick(postId: number) {
   &__item {
     padding: 16px;
     margin-bottom: 16px;
+    background-color: #ffffff;
   }
 }
 </style>
